@@ -16,7 +16,7 @@ export default function LandingNav() {
 
   return (
     <nav className="fixed top-0 left-0 w-full bg-[#0B0E11] text-white shadow-lg z-50 px-4 py-2 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto py-4 flex justify-between items-center">
+      <div className="max-w-7xl mx-auto py-1 flex justify-between items-center">
         {/* Logo now links to homepage */}
         <Link
           href="/"
