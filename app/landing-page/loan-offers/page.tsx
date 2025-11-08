@@ -8,14 +8,14 @@ import { Toaster, toast } from "sonner";
 
 export default function LoanOfferPage() {
   const loanOffers = [
-    { amount: 500, duration: "30 Days", roi: "10%" },
-    { amount: 1000, duration: "30 Days", roi: "10%" },
-    { amount: 2500, duration: "30 Days", roi: "10%" },
-    { amount: 5000, duration: "30 Days", roi: "10%" },
-    { amount: 10000, duration: "30 Days", roi: "10%" },
-    { amount: 15000, duration: "30 Days", roi: "10%" },
-    { amount: 20000, duration: "30 Days", roi: "10%" },
-    { amount: 25000, duration: "30 Days", roi: "10%" },
+    { amount: 500, duration: "Instantly ", roi: "10%" },
+    { amount: 1000, duration: "Instantly ", roi: "10%" },
+    { amount: 2500, duration: "Instantly ", roi: "10%" },
+    { amount: 5000, duration: "Instantly ", roi: "10%" },
+    { amount: 10000, duration: "Instantly ", roi: "10%" },
+    { amount: 15000, duration: "Instantly ", roi: "10%" },
+    { amount: 20000, duration: "Instantly ", roi: "10%" },
+    { amount: 25000, duration: "Instantly ", roi: "10%" },
   ];
 
   return (
@@ -79,8 +79,7 @@ export default function LoanOfferPage() {
                     <Check className="text-[#1E2A78] w-4 h-4" /> No hidden fees
                   </li>
                   <li className="flex items-center gap-2">
-                    <Check className="text-[#1E2A78] w-4 h-4" /> Withdraw anytime
-                    after 30 days
+                    <Check className="text-[#1E2A78] w-4 h-4" /> Withdraw anytime Instantly 
                   </li>
                 </ul>
               </div>

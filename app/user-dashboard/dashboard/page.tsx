@@ -58,11 +58,14 @@ export default function DashboardPage() {
 
   const collateralRequired = (loanAmount * collateralRatio) / 100;
 
-  // Mock live activities with dynamic updates
+  // State for loading to prevent hydration mismatch
+  const [isClient, setIsClient] = useState(false);
+
+  // Mock live activities with dynamic updates - ensure unique IDs
   const [liveActivities, setLiveActivities] = useState([
-    { id: "0xA4B", description: "deposited 2.5 ETH collateral" },
-    { id: "0xSC9", description: "repaid 1.2 ETH loan" },
-    { id: "0xA4B", description: "deposited 1.5 ETH collateral" },
+    { id: "0xA4B1", description: "deposited 2.5 ETH collateral" },
+    { id: "0xSC92", description: "repaid 1.2 ETH loan" },
+    { id: "0xA4B3", description: "deposited 1.5 ETH collateral" },
   ]);
 
   // Possible descriptions for random generation
@@ -93,6 +96,11 @@ export default function DashboardPage() {
     return { id: randomId, description };
   };
 
+  // Set isClient to true after component mounts
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // Update live activities every 5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
@@ -108,6 +116,15 @@ export default function DashboardPage() {
 
   // Amount options for buttons
   const amountOptions = [500, 1000, 2500, 5000, 10000, 15000, 20000, 25000];
+
+  // Show loading state during SSR/SSG to prevent hydration mismatch
+  if (!isClient) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Loading dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50/50">
