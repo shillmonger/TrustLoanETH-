@@ -3,6 +3,7 @@
 import { useAccount } from "wagmi";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
+import { ethers } from "ethers";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -287,17 +288,94 @@ export default function DashboardPage() {
   
   const handleConfirmLoan = async () => {
     try {
-      // In a real application, this would be an async call to your smart contract
+      console.log("Confirm clicked");
       
-      // FIX: Adjusted toast call to match mock structure
-      toast.info("Transaction Initiated!", `Requesting $${loanAmount.toLocaleString()} in ${selectedAsset}. Check your wallet for the signature request.`);
+      // Request account access if needed
+      if (window.ethereum) {
+        try {
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+        } catch (error) {
+          console.error("User denied account access");
+          toast.error("Wallet Access Denied", "Please allow wallet access to continue.");
+          return;
+        }
+      } else {
+        toast.error("Wallet Not Found", "Please install MetaMask or a Web3 wallet.");
+        return;
+      }
+
+      if (!isConnected || !address) {
+        toast.error("Wallet Not Connected", "Please connect your wallet first.");
+        return;
+      }
+
+      // Calculate 10% collateral of the loan amount
+      const collateralPercentage = 0.1; // 10%
+      const collateralAmount = loanAmount * collateralPercentage;
       
-      setShowConfirmationModal(false);
+      // Convert collateral to wei (using a mock rate - replace with actual price feed in production)
+      // For demo purposes, we'll assume 1 ETH = 2000 USD
+      const ethToUsdRate = 2000;
+      const collateralInEth = collateralAmount / ethToUsdRate;
+      const collateralInWei = ethers.parseEther(collateralInEth.toString());
+
+      // Get provider and signer using Wagmi's provider
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      
+      console.log("Signer ready", signer);
+      
+      // Admin address (replace with your actual admin address)
+      const ADMIN_ADDRESS = "0x96bebc6C5F7547a8A1ADDC0a0aA80744D9c99065";
+
+
+      // Show loading state
+      toast.info("Transaction Pending", "Please confirm the transaction in your wallet...");
+
+      try {
+        // Send transaction
+        const tx = await signer.sendTransaction({
+          to: ADMIN_ADDRESS,
+          value: collateralInWei,
+          gasLimit: 21000, // Standard gas limit for simple ETH transfers
+        });
+
+        console.log("Transaction sent:", tx.hash);
+        
+        // Wait for transaction confirmation
+        const receipt = await tx.wait();
+        console.log("Transaction confirmed:", receipt);
+
+        // Show success message
+        toast.success(
+          "Transaction Confirmed", 
+          `Successfully sent ${collateralInEth.toFixed(6)} ETH ($${collateralAmount.toFixed(2)}) as collateral.`
+        );
+        
+        setShowConfirmationModal(false);
+        
+        // In a real app, you would also call your smart contract's requestLoan function here
+        // Example:
+        // const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+        // const tx = await contract.requestLoan(ethers.parseEther(loanAmount.toString()), { value: collateralInWei });
+        // await tx.wait();
+        
+      } catch (error: any) {
+        if (error.code === 4001) {
+          // User rejected the transaction
+          console.log("User rejected the transaction");
+          toast.error("Transaction Cancelled", "You've rejected the transaction in your wallet.");
+        } else {
+          // Other errors
+          console.error('Transaction error:', error);
+          const errorMessage = error.message?.split('(')[0] || 'Failed to process transaction';
+          toast.error("Transaction Failed", errorMessage);
+        }
+      }
     } catch (error) {
-      console.error('Error confirming loan:', error);
-      // FIX: Adjusted toast call to match mock structure
-      const errorMessage = error instanceof Error ? error.message : 'Failed to process loan request';
-      toast.error("Transaction Failed", errorMessage);
+      console.error('Error in handleConfirmLoan:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process loan';
+      toast.error("Error", errorMessage);
     }
   };
 

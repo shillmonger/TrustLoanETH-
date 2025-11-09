@@ -7,9 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "tailwind:init": "tailwindcss init -p"
+    "tailwind:init": "tailwindcss init -p",
+    "migrate:add-wallet-provider": "ts-node --project tsconfig.json ./scripts/migrations/add-wallet-provider.ts"
   },
   "dependencies": {
+    "@auth/mongodb-adapter": "^3.11.1",
     "@prisma/client": "^6.18.0",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.7",
@@ -18,6 +20,7 @@
     "@rainbow-me/rainbowkit": "^1.3.6",
     "@tanstack/react-query": "^4.42.0",
     "@tanstack/react-query-devtools": "^4.36.1",
+    "@types/mongodb": "^4.0.6",
     "@types/mongoose": "^5.11.96",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -25,8 +28,10 @@
     "ethers": "^6.15.0",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.548.0",
+    "mongodb": "^6.20.0",
     "mongoose": "^8.19.2",
     "next": "16.0.1",
+    "next-auth": "^4.24.13",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "sonner": "^2.0.7",
@@ -44,7 +49,8 @@
     "eslint-config-next": "16.0.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.16",
+    "ts-node": "^10.9.2",
     "tw-animate-css": "^1.4.0",
-    "typescript": "^5"
+    "typescript": "^5.9.3"
   }
 }
