@@ -1,6 +1,7 @@
 "use client";
 
-import React, { ReactNode } from "react";
+import React from "react";
+import type { ReactNode } from 'react';
 import { WalletEvents } from "@/components/wallet-events";
 import { configureChains, createConfig, WagmiConfig } from "wagmi";
 import { publicProvider } from "wagmi/providers/public";
@@ -23,7 +24,7 @@ import {
 import { alchemyProvider } from 'wagmi/providers/alchemy';
 
 interface WagmiProviderWrapperProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 // Configure chains with better WebSocket handling
@@ -73,15 +74,10 @@ const config = createConfig({
   connectors,
   publicClient,
   // Disable WebSocket in development to prevent connection issues
-  webSocketPublicClient: (config) => {
-    if (typeof window === 'undefined') return undefined;
-    if (process.env.NODE_ENV !== 'production') return undefined;
-    return webSocketPublicClient;
-  },
-  // Disable batch in development to prevent potential issues
-  batch: process.env.NODE_ENV === 'production' 
-    ? { multicall: { batchSize: 1024 * 200, wait: 16 } }
+  webSocketPublicClient: process.env.NODE_ENV === 'production' && typeof window !== 'undefined' 
+    ? webSocketPublicClient 
     : undefined,
+  // Batch configuration is handled automatically in wagmi v2
 });
 
 // Create a React Query client
@@ -129,7 +125,7 @@ class ErrorBoundary extends React.Component<{children: ReactNode}, {hasError: bo
 }
 
 // Main provider component
-export default function WagmiProviderWrapper({ children }: { children: ReactNode }) {
+export default function WagmiProviderWrapper({ children }: WagmiProviderWrapperProps) {
   const [mounted, setMounted] = React.useState(false);
   
   // Ensure we're in the browser before rendering

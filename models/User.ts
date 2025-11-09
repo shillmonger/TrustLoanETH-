@@ -42,10 +42,6 @@ const userSchema = new mongoose.Schema<IUserDocument>(
       sparse: true,
       match: [/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/, 'Please use a valid email address'],
     },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
     lastLogin: {
       type: Date,
       default: Date.now,
