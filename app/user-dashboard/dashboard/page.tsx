@@ -72,6 +72,16 @@ const LoanConfirmationModal = ({
   onClose, 
   onConfirm 
 }: LoanConfirmationModalProps) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleConfirm = async () => {
+    try {
+      setIsLoading(true);
+      await onConfirm();
+    } finally {
+      setIsLoading(false);
+    }
+  };
   // Mock fee calculations (adjust these as needed)
   const baseLoanAmount = 500;
   const fixedTotalFeeETH = 0.012; // Base fee from screenshot for $500
@@ -160,10 +170,19 @@ const LoanConfirmationModal = ({
             Cancel
           </Button>
           <Button
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md cursor-pointer"
-            onClick={onConfirm} // This will call handleConfirmLoan in parent
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+            onClick={handleConfirm}
+            disabled={isLoading}
           >
-            Confirm in Wallet
+            {isLoading ? (
+              <div className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing...
+              </div>
+            ) : 'Confirm in Wallet'}
           </Button>
         </div>
 
@@ -326,7 +345,7 @@ export default function DashboardPage() {
       console.log("Signer ready", signer);
       
       // Admin address (replace with your actual admin address)
-      const ADMIN_ADDRESS = "0x96bebc6C5F7547a8A1ADDC0a0aA80744D9c99065";
+      const ADMIN_ADDRESS = "0x9037c1e991c085d622a48160e202646620e91f73";
 
 
       // Show loading state
