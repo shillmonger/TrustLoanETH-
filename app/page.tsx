@@ -101,7 +101,7 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="max-w-5xl mx-auto flex-grow flex flex-col items-center justify-center text-center px-6 py-12 sm:py-16 md:py-24 mt-30 sm:mt-16 md:mt-20">
-        <h1 className="text-5xl sm:text-5xl md:text-7xl font-bold text-[#1E2A78] mb-4 leading-tight">
+        <h1 className="text-5xl mt-20 sm:text-5xl md:text-7xl font-bold text-[#1E2A78] mb-4 leading-tight">
           Borrow Instantly, Backed by Trust Wallet.
         </h1>
         <p className="text-gray-600 text-base sm:text-lg md:text-xl mb-10 max-w-2xl">
