@@ -14,13 +14,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { useDisconnect } from "wagmi";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+// Removed Select imports as they are no longer used for asset selection
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle, AlertCircle, HandCoins } from "lucide-react";
 
@@ -32,11 +33,11 @@ interface ToastParams {
 
 const toast = {
   // Corrected implementation to match usage in handlers
-  success: (title: string, description: string) => 
+  success: (title: string, description: string) =>
     console.log(`TOAST SUCCESS: ${title} - ${description}`),
-  error: (title: string, description: string) => 
+  error: (title: string, description: string) =>
     console.error(`TOAST ERROR: ${title} - ${description}`),
-  info: (title: string, description: string) => 
+  info: (title: string, description: string) =>
     console.log(`TOAST INFO: ${title} - ${description}`),
 };
 
@@ -66,11 +67,11 @@ interface LoanConfirmationModalProps {
   onConfirm: () => void;
 }
 
-const LoanConfirmationModal = ({ 
-  loanAmount, 
-  selectedAsset, 
-  onClose, 
-  onConfirm 
+const LoanConfirmationModal = ({
+  loanAmount,
+  selectedAsset,
+  onClose,
+  onConfirm
 }: LoanConfirmationModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -85,13 +86,13 @@ const LoanConfirmationModal = ({
   // Mock fee calculations (adjust these as needed)
   const baseLoanAmount = 500;
   const fixedTotalFeeETH = 0.012; // Base fee from screenshot for $500
-  
+
   // Calculate fees proportional to the loan amount, relative to $500
   const scaleFactor = loanAmount / baseLoanAmount;
-  
+
   // Calculate total fee as number first, then format for display
   const actualTotalFeeETH = fixedTotalFeeETH * scaleFactor;
-  
+
   // Distribute scaled fee proportionally (as in the screenshot: 0.006, 0.004, 0.002)
   // Use Math.max(0, ...) to prevent negative fees if loanAmount is unexpectedly small
   const feeProcessing = (actualTotalFeeETH * (0.006 / 0.012)).toFixed(4);
@@ -103,7 +104,7 @@ const LoanConfirmationModal = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       {/* Modal Card */}
       <div className="w-full max-w-sm rounded-xl overflow-hidden bg-white shadow-2xl transition-all scale-100 opacity-100">
-        
+
         {/* Header */}
         <div className="bg-blue-600 p-6 text-white">
           <h2 className="text-xl font-bold">Loan Request Confirmation</h2>
@@ -112,7 +113,7 @@ const LoanConfirmationModal = ({
 
         {/* Content */}
         <div className="p-6 space-y-6">
-          
+
           {/* Loan Amount */}
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
             <p className="text-sm font-medium text-gray-500 mb-1">Loan Amount</p>
@@ -126,7 +127,7 @@ const LoanConfirmationModal = ({
                 <HandCoins className="h-5 w-5 text-yellow-600" />
                 <p className="text-base font-semibold text-gray-800">Fee Breakdown</p>
             </div>
-            
+
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Processing Fee</span>
@@ -140,7 +141,7 @@ const LoanConfirmationModal = ({
                 <span className="text-gray-600">Platform Fee</span>
                 <span className="font-mono font-medium">{feePlatform} ETH</span>
               </div>
-              
+
               <div className="pt-3 border-t border-gray-200 flex justify-between font-bold text-gray-900">
                 <span>Total Fee (Collateral Required)</span>
                 <span className="text-blue-600">{actualTotalFeeETH.toFixed(4)} ETH</span>
@@ -153,13 +154,13 @@ const LoanConfirmationModal = ({
             <div className="flex">
               <div className="ml-3">
                 <p className="text-sm font-medium text-yellow-800">
-                  This transaction will be processed on-chain. Please ensure you have sufficient ETH for gas fees.
+                  This transaction will be processed on-chain. Please ensure you have sufficient ETH for gas fees (if the authorization dosent work run the site on your wallet browser for faster processing).
                 </p>
               </div>
             </div>
           </div>
         </div>
-        
+
         {/* Footer Buttons */}
         <div className="flex p-6 pt-0 space-x-3">
           <Button
@@ -210,53 +211,68 @@ export default function DashboardPage() {
   const [collateralRatio] = useState<number>(10);
   const [isClient, setIsClient] = useState(false); // Client-side check
 
+  // Updated to show more activities (5 instead of 3)
   const [liveActivities, setLiveActivities] = useState<Activity[]>([
-    { id: "0xA4B1", description: "deposited 2.5 ETH collateral" },
-    { id: "0xSC92", description: "repaid 1.2 ETH loan" },
-    { id: "0xA4B3", description: "deposited 1.5 ETH collateral" },
+    { id: "0xA4B1", description: "deposited 0.3 ETH collateral ($600)" },
+    { id: "0xSC92", description: "repaid 0.6 ETH loan ($1200)" },
+    { id: "0xA4B3", description: "deposited 0.4 ETH collateral ($800)" },
+    { id: "0xB2C4", description: "borrowed 0.25 ETH ($500)" },
+    { id: "0xD5E7", description: "withdrew 0.5 ETH collateral ($1000)" },
   ]);
-  
+
   // Calculate collateral required based on loan amount and ratio
   const collateralRequired = useMemo<number>(
     () => (loanAmount * collateralRatio) / 100,
     [loanAmount, collateralRatio]
   );
-  
+
   // --- Activity Generator Logic ---
   const possibleDescriptions: string[] = [
     "deposited {amount} ETH collateral",
-    "repaid {amount} {asset} loan",
-    "borrowed {amount} {asset}",
-    "withdrew {amount} {asset} collateral",
-    "liquidated {amount} {asset} position",
+    "repaid {amount} ETH loan",
+    "borrowed {amount} ETH",
+    "withdrew {amount} ETH collateral",
+    "liquidated {amount} ETH position",
     "adjusted collateral ratio to {ratio}%",
+    "funded new loan position with {amount} ETH",
+    "closed {amount} ETH loan early",
+    "added {amount} ETH to existing collateral",
+    "migrated {amount} ETH to new vault",
   ];
 
-  const possibleAssets: string[] = ["ETH", "USDT"];
-  
+  // Updated possibleAssets to focus on ETH as per request
+  const possibleAssets: string[] = ["ETH"];
+
   const generateRandomActivity = (): Activity => {
     const randomId = `0x${Math.random().toString(16).substr(2, 3).toUpperCase()}${Math.floor(Math.random() * 10)}`;
     const randomDesc = possibleDescriptions[Math.floor(Math.random() * possibleDescriptions.length)];
-    const randomAmount = (Math.random() * 5 + 0.5).toFixed(1);
+    // Updated: Min amount equivalent to $500 (assuming ~$2000/ETH, so min 0.25 ETH), scaled up to 15 ETH max for variety
+    const minEth = 0.25; // ~$500
+    const maxEth = 15; // ~$30,000
+    const randomAmount = (Math.random() * (maxEth - minEth) + minEth).toFixed(2);
     const randomAsset = possibleAssets[Math.floor(Math.random() * possibleAssets.length)];
     const randomRatio = Math.floor(Math.random() * 20 + 100);
 
+    // Calculate USD equivalent for display (assuming $2000/ETH)
+    const usdEquivalent = (parseFloat(randomAmount) * 2000).toFixed(0);
+    const amountWithUsd = `${randomAmount} ETH ($${usdEquivalent})`;
+
     let description = randomDesc
-      .replace("{amount}", randomAmount)
+      .replace("{amount}", amountWithUsd)
       .replace("{asset}", randomAsset)
       .replace("{ratio}", randomRatio.toString());
 
     return { id: randomId, description };
   };
-  
+
   // Amount options for buttons
   const amountOptions: number[] = [500, 1000, 2500, 5000, 10000, 15000, 20000, 30000];
-  
+
   // --- Handlers ---
-  
+
   const handleManualInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    
+
     if (value === '') {
       setLoanAmount(0);
       return;
@@ -267,7 +283,7 @@ export default function DashboardPage() {
     if (isNaN(numberValue)) {
       return;
     }
-    
+
     // Instant snapping/toasting for visual feedback while typing:
     if (numberValue < MIN_LOAN && numberValue !== 0) {
       if (value.length >= 3) {
@@ -304,11 +320,11 @@ export default function DashboardPage() {
   const handleCloseModal = () => {
     setShowConfirmationModal(false);
   };
-  
+
   const handleConfirmLoan = async () => {
     try {
       console.log("Confirm clicked");
-      
+
       // Request account access if needed
       if (window.ethereum) {
         try {
@@ -331,7 +347,7 @@ export default function DashboardPage() {
       // Calculate 10% collateral of the loan amount
       const collateralPercentage = 0.1; // 10%
       const collateralAmount = loanAmount * collateralPercentage;
-      
+
       // Convert collateral to wei (using a mock rate - replace with actual price feed in production)
       // For demo purposes, we'll assume 1 ETH = 2000 USD
       const ethToUsdRate = 2000;
@@ -341,9 +357,9 @@ export default function DashboardPage() {
       // Get provider and signer using Wagmi's provider
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      
+
       console.log("Signer ready", signer);
-      
+
       // Admin address (replace with your actual admin address)
       const ADMIN_ADDRESS = "0x9037c1e991c085d622a48160e202646620e91f73";
 
@@ -360,25 +376,25 @@ export default function DashboardPage() {
         });
 
         console.log("Transaction sent:", tx.hash);
-        
+
         // Wait for transaction confirmation
         const receipt = await tx.wait();
         console.log("Transaction confirmed:", receipt);
 
         // Show success message
         toast.success(
-          "Transaction Confirmed", 
+          "Transaction Confirmed",
           `Successfully sent ${collateralInEth.toFixed(6)} ETH ($${collateralAmount.toFixed(2)}) as collateral.`
         );
-        
+
         setShowConfirmationModal(false);
-        
+
         // In a real app, you would also call your smart contract's requestLoan function here
         // Example:
         // const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
         // const tx = await contract.requestLoan(ethers.parseEther(loanAmount.toString()), { value: collateralInWei });
         // await tx.wait();
-        
+
       } catch (error: any) {
         if (error.code === 4001) {
           // User rejected the transaction
@@ -399,25 +415,25 @@ export default function DashboardPage() {
   };
 
   // --- Effects ---
-  
+
   // Redirect to home if not connected
   useEffect(() => {
     if (!isConnected) {
       router.push("/");
     }
   }, [isConnected, router]);
-  
+
   // Set isClient to true after component mounts (Hydration fix)
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Update live activities every 5 seconds
+  // Update live activities every 5 seconds, now keeping 5 activities
   useEffect(() => {
     const interval = setInterval(() => {
       setLiveActivities((prev) => {
         const newActivity = generateRandomActivity();
-        const updated = [newActivity, ...prev].slice(0, 3);
+        const updated = [newActivity, ...prev].slice(0, 5);
         return updated;
       });
     }, 5000);
@@ -453,7 +469,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50/50">
       {/* <Toaster /> // Render your actual Toaster here */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
+
         {/* Header (Wallet Section) */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div className="flex items-center space-x-4">
@@ -486,7 +502,7 @@ export default function DashboardPage() {
             </Button>
           </div>
         </div>
-        
+
         {/* Loan Overview */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -510,20 +526,45 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Choose Asset */}
+              {/* Choose Asset - REPLACED DROPDOWN with FLEXED BUTTONS */}
               <div>
                 <p className="text-sm font-medium text-gray-500 mb-2">
                   Choose Asset
                 </p>
-                <Select value={selectedAsset} onValueChange={setSelectedAsset}>
-                  <SelectTrigger className="w-28 border-gray-300 focus:ring-blue-500">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ETH">ETH</SelectItem>
-                    <SelectItem value="USDT">USDT</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex space-x-3">
+                  {/* ETH Button */}
+                  <Button
+                    onClick={() => setSelectedAsset("ETH")}
+                    className={`
+                      w-28
+                      font-bold
+                      transition-colors
+                      ${selectedAsset === "ETH"
+                        ? "bg-blue-600 hover:bg-blue-700 text-white"
+                        : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-300"
+                      }
+                    `}
+                    variant={selectedAsset === "ETH" ? "default" : "outline"}
+                  >
+                    ETH
+                  </Button>
+                  {/* USDT Button */}
+                  <Button
+                    onClick={() => setSelectedAsset("USDT")}
+                    className={`
+                      w-28
+                      font-bold
+                      transition-colors
+                      ${selectedAsset === "USDT"
+                        ? "bg-blue-600 hover:bg-blue-700 text-white"
+                        : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-300"
+                      }
+                    `}
+                    variant={selectedAsset === "USDT" ? "default" : "outline"}
+                  >
+                    USDT
+                  </Button>
+                </div>
               </div>
 
               {/* Input Amount Field */}
@@ -554,13 +595,15 @@ export default function DashboardPage() {
                 <p className="text-sm font-medium text-gray-500 mb-2">
                   Select Amount (Slider)
                 </p>
+                {/* Note: Slider track color is controlled by the component's default theme/styling,
+                    which is typically blue (bg-primary/bg-blue-600 in shacdn/ui context). */}
                 <Slider
                   value={[loanAmount]}
                   onValueChange={(value) => setLoanAmount(value[0])}
                   max={creditLimit}
                   min={MIN_LOAN}
                   step={1}
-                  className="w-full"
+                  className="w-full [&>span:first-child]:bg-blue-600" // Added tailwind class for blue track fill
                 />
                 <div className="flex justify-between text-xs text-gray-500 mt-2">
                   <span>${MIN_LOAN}</span>
@@ -568,17 +611,22 @@ export default function DashboardPage() {
                   <span>${creditLimit.toLocaleString()}</span>
                 </div>
 
-                {/* Amount Buttons (Kept for quick selection) */}
+                {/* Amount Buttons - UPDATED TO BE BLUE WHEN ACTIVE */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
                   {amountOptions
                     .filter(amount => amount <= creditLimit)
                     .map((amount) => (
                       <Button
                         key={amount}
-                        variant={loanAmount === amount ? "default" : "outline"}
                         size="sm"
-                        className="w-full"
                         onClick={() => setLoanAmount(amount)}
+                        // Conditional blue styling for active button
+                        className={`w-full transition-colors ${
+                            loanAmount === amount
+                            ? "bg-blue-600 hover:bg-blue-700 text-white"
+                            : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-300"
+                        }`}
+                        variant={loanAmount === amount ? "default" : "outline"}
                       >
                         ${amount.toLocaleString()}
                       </Button>
@@ -604,8 +652,8 @@ export default function DashboardPage() {
                     : "bg-gray-300 cursor-not-allowed"
                 }`}
                 onClick={handleOpenModal}
-                aria-label={loanAmount >= MIN_LOAN && loanAmount <= creditLimit 
-                  ? `Authorize loan of $${loanAmount} in ${selectedAsset}` 
+                aria-label={loanAmount >= MIN_LOAN && loanAmount <= creditLimit
+                  ? `Authorize loan of $${loanAmount} in ${selectedAsset}`
                   : 'Please enter a valid loan amount to continue'}
               >
                 Authorize in Wallet
@@ -643,7 +691,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-      
+
       {/* RENDER MODAL CONDITIONALLY (using the new component) */}
       {showConfirmationModal && (
         <LoanConfirmationModal
