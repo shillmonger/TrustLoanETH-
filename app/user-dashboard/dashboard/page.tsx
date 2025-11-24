@@ -3,8 +3,11 @@
 import { useAccount } from "wagmi";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
+import { useEthPrice } from "@/src/hooks/useEthPrice";
 import { ethers } from "ethers";
 import { Button } from "@/components/ui/button";
+import { useFeePayment } from "@/src/hooks/useFeePayment";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -25,21 +28,7 @@ import { useDisconnect } from "wagmi";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle, AlertCircle, HandCoins } from "lucide-react";
 
-// --- MOCK SONNER/TOAST (Replace with your actual import) ---
-interface ToastParams {
-  title: string;
-  description: string;
-}
-
-const toast = {
-  // Corrected implementation to match usage in handlers
-  success: (title: string, description: string) =>
-    console.log(`TOAST SUCCESS: ${title} - ${description}`),
-  error: (title: string, description: string) =>
-    console.error(`TOAST ERROR: ${title} - ${description}`),
-  info: (title: string, description: string) =>
-    console.log(`TOAST INFO: ${title} - ${description}`),
-};
+// Using sonner toast library
 
 // --- MOCK INPUT COMPONENT (You should use your actual "@/components/ui/input") ---
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -83,21 +72,54 @@ const LoanConfirmationModal = ({
       setIsLoading(false);
     }
   };
-  // Mock fee calculations (adjust these as needed)
-  const baseLoanAmount = 500;
-  const fixedTotalFeeETH = 0.012; // Base fee from screenshot for $500
-
-  // Calculate fees proportional to the loan amount, relative to $500
-  const scaleFactor = loanAmount / baseLoanAmount;
-
-  // Calculate total fee as number first, then format for display
-  const actualTotalFeeETH = fixedTotalFeeETH * scaleFactor;
-
-  // Distribute scaled fee proportionally (as in the screenshot: 0.006, 0.004, 0.002)
-  // Use Math.max(0, ...) to prevent negative fees if loanAmount is unexpectedly small
-  const feeProcessing = (actualTotalFeeETH * (0.006 / 0.012)).toFixed(4);
-  const feeNetwork = (actualTotalFeeETH * (0.004 / 0.012)).toFixed(4);
-  const feePlatform = (actualTotalFeeETH * (0.002 / 0.012)).toFixed(4);
+  // Use live ETH price
+  const { ethPrice, isLoading: isPriceLoading, error: priceError } = useEthPrice();
+  
+  // Calculate collateral amounts using live price
+  const collateralPercentage = 0.10; // 10% collateral
+  const collateralAmountUSD = loanAmount * collateralPercentage;
+  const collateralAmountETH = ethPrice ? collateralAmountUSD / ethPrice : 0;
+  
+  // Format values for display
+  const formattedCollateralUSD = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(collateralAmountUSD);
+  
+  const formattedCollateralETH = collateralAmountETH.toFixed(6) + ' ETH';
+  
+  // Show loading state if price is being fetched
+  if (isPriceLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="w-full max-w-sm rounded-xl overflow-hidden bg-white p-6 text-center">
+          <p className="text-gray-700">Loading current ETH price...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show error if price fetch failed
+  if (priceError || !ethPrice) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="w-full max-w-sm rounded-xl overflow-hidden bg-white p-6">
+          <div className="text-red-500 mb-4">
+            <AlertTriangle className="h-6 w-6 mx-auto mb-2" />
+            <p className="text-center">Failed to load ETH price</p>
+          </div>
+          <Button 
+            className="w-full mt-4" 
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
 
   return (
@@ -121,30 +143,26 @@ const LoanConfirmationModal = ({
             <p className="text-sm text-gray-500 mt-1">Asset: **{selectedAsset}**</p>
           </div>
 
-          {/* Fee Breakdown */}
+          {/* Collateral Details */}
           <div>
             <div className="flex items-center space-x-2 mb-3">
-                <HandCoins className="h-5 w-5 text-yellow-600" />
-                <p className="text-base font-semibold text-gray-800">Fee Breakdown</p>
+              <HandCoins className="h-5 w-5 text-yellow-600" />
+              <p className="text-base font-semibold text-gray-800">Collateral Required</p>
             </div>
 
-            <div className="space-y-2 text-sm">
+            <div className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Processing Fee</span>
-                <span className="font-mono font-medium">{feeProcessing} ETH</span>
+                <span className="text-gray-600">Collateral (10% of loan)</span>
+                <span className="font-medium">{formattedCollateralUSD}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Network Fee</span>
-                <span className="font-mono font-medium">{feeNetwork} ETH</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Platform Fee</span>
-                <span className="font-mono font-medium">{feePlatform} ETH</span>
+                <span className="text-gray-600">Current ETH Price</span>
+                <span className="font-mono font-medium">${ethPrice.toLocaleString()}/ETH</span>
               </div>
 
               <div className="pt-3 border-t border-gray-200 flex justify-between font-bold text-gray-900">
-                <span>Total Fee (Collateral Required)</span>
-                <span className="text-blue-600">{actualTotalFeeETH.toFixed(4)} ETH</span>
+                <span>Total Collateral Required</span>
+                <span className="text-blue-600">{formattedCollateralETH}</span>
               </div>
             </div>
           </div>
@@ -197,6 +215,9 @@ export default function DashboardPage() {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const { ethPrice, isLoading: isEthPriceLoading, error: ethPriceError } = useEthPrice();
+  const { payFee, isLoading: isPayFeeLoading, isConfirming, isConfirmed, txHash } = useFeePayment();
 
   const MIN_LOAN = 500;
   const MAX_LOAN = 30000;
@@ -288,7 +309,9 @@ export default function DashboardPage() {
     if (numberValue < MIN_LOAN && numberValue !== 0) {
       if (value.length >= 3) {
         // FIX: Adjusted toast call to match mock structure
-        toast.error("Loan Amount Too Low", `Minimum loan amount is $${MIN_LOAN.toLocaleString()}.`);
+        toast.error("Loan Amount Too Low", {
+          description: `Minimum loan amount is $${MIN_LOAN.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`
+        });
         setLoanAmount(MIN_LOAN);
         return;
       }
@@ -296,7 +319,9 @@ export default function DashboardPage() {
 
     if (numberValue > creditLimit) {
       // FIX: Adjusted toast call to match mock structure
-      toast.error("Exceeds Credit Limit", `Your credit limit is $${creditLimit.toLocaleString()}.`);
+      toast.error("Exceeds Credit Limit", {
+        description: `Your credit limit is $${creditLimit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`
+      });
       setLoanAmount(creditLimit);
       return;
     }
@@ -308,8 +333,10 @@ export default function DashboardPage() {
   const handleOpenModal = () => {
     // Final check before opening modal
     if (loanAmount < MIN_LOAN || loanAmount > creditLimit) {
-      // FIX: Adjusted toast call to match mock structure
-      toast.error("Invalid Loan Amount", `Please select an amount between $${MIN_LOAN.toLocaleString()} and $${creditLimit.toLocaleString()}.`);
+      // Show error toast with proper formatting
+      toast.error("Invalid Loan Amount", {
+        description: `Please select an amount between $${MIN_LOAN.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} and $${creditLimit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`
+      });
       return;
     }
     if (loanAmount > 0) {
@@ -322,95 +349,34 @@ export default function DashboardPage() {
   };
 
   const handleConfirmLoan = async () => {
+    if (!isConnected || !address) {
+      toast.error("Wallet Not Connected", {
+        description: "Please connect your wallet first."
+      });
+      return;
+    }
+
+    if (!ethPrice) {
+      toast.error("Price Error", {
+        description: "Unable to fetch current ETH price. Please try again."
+      });
+      return;
+    }
+
     try {
-      console.log("Confirm clicked");
+      // Calculate collateral using the same formula as in the modal
+      const collateralAmountUSD = loanAmount * 0.10; // 10% of loan amount
+      const collateralInEth = (collateralAmountUSD / ethPrice).toFixed(6);
 
-      // Request account access if needed
-      if (window.ethereum) {
-        try {
-          await window.ethereum.request({ method: 'eth_requestAccounts' });
-        } catch (error) {
-          console.error("User denied account access");
-          toast.error("Wallet Access Denied", "Please allow wallet access to continue.");
-          return;
-        }
-      } else {
-        toast.error("Wallet Not Found", "Please install MetaMask or a Web3 wallet.");
-        return;
-      }
-
-      if (!isConnected || !address) {
-        toast.error("Wallet Not Connected", "Please connect your wallet first.");
-        return;
-      }
-
-      // Calculate 10% collateral of the loan amount
-      const collateralPercentage = 0.1; // 10%
-      const collateralAmount = loanAmount * collateralPercentage;
-
-      // Convert collateral to wei (using a mock rate - replace with actual price feed in production)
-      // For demo purposes, we'll assume 1 ETH = 2000 USD
-      const ethToUsdRate = 2000;
-      const collateralInEth = collateralAmount / ethToUsdRate;
-      const collateralInWei = ethers.parseEther(collateralInEth.toString());
-
-      // Get provider and signer using Wagmi's provider
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-
-      console.log("Signer ready", signer);
-
-      // Admin address (replace with your actual admin address)
-      const ADMIN_ADDRESS = "0x9037c1e991c085d622a48160e202646620e91f73";
-
-
-      // Show loading state
-      toast.info("Transaction Pending", "Please confirm the transaction in your wallet...");
-
-      try {
-        // Send transaction
-        const tx = await signer.sendTransaction({
-          to: ADMIN_ADDRESS,
-          value: collateralInWei,
-          gasLimit: 21000, // Standard gas limit for simple ETH transfers
-        });
-
-        console.log("Transaction sent:", tx.hash);
-
-        // Wait for transaction confirmation
-        const receipt = await tx.wait();
-        console.log("Transaction confirmed:", receipt);
-
-        // Show success message
-        toast.success(
-          "Transaction Confirmed",
-          `Successfully sent ${collateralInEth.toFixed(6)} ETH ($${collateralAmount.toFixed(2)}) as collateral.`
-        );
-
+      // Use the payFee hook to handle the transaction with the exact same ETH amount
+      const hash = await payFee(collateralInEth);
+      
+      if (hash) {
         setShowConfirmationModal(false);
-
-        // In a real app, you would also call your smart contract's requestLoan function here
-        // Example:
-        // const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-        // const tx = await contract.requestLoan(ethers.parseEther(loanAmount.toString()), { value: collateralInWei });
-        // await tx.wait();
-
-      } catch (error: any) {
-        if (error.code === 4001) {
-          // User rejected the transaction
-          console.log("User rejected the transaction");
-          toast.error("Transaction Cancelled", "You've rejected the transaction in your wallet.");
-        } else {
-          // Other errors
-          console.error('Transaction error:', error);
-          const errorMessage = error.message?.split('(')[0] || 'Failed to process transaction';
-          toast.error("Transaction Failed", errorMessage);
-        }
       }
     } catch (error) {
       console.error('Error in handleConfirmLoan:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to process loan';
-      toast.error("Error", errorMessage);
+      // Error is already handled by the useFeePayment hook
     }
   };
 

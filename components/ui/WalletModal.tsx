@@ -63,15 +63,24 @@ export default function WalletModal({ open, onClose, onConnected }: Props) {
           ) : (
             <div className="flex flex-col space-y-4">
               <ConnectButton.Custom>
-                {({ openConnectModal }) => (
-                  <button
-                    onClick={openConnectModal}
-                    className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center justify-center space-x-2"
-                  >
-                    <span>Connect Wallet</span>
-                  </button>
-                )}
-              </ConnectButton.Custom>
+  {({ openConnectModal }) => (
+    <button
+      onClick={() => {
+        // Direct user-triggered call (required on mobile)
+        openConnectModal();
+
+        // Close your parent modal AFTER triggering
+        setTimeout(() => {
+          onClose();
+        }, 50);
+      }}
+      className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center justify-center space-x-2"
+    >
+      <span>Connect Wallet</span>
+    </button>
+  )}
+</ConnectButton.Custom>
+
               <p className="text-center text-sm text-gray-400">
                 By connecting a wallet, you agree to our Terms of Service and Privacy Policy
               </p>
