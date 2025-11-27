@@ -50,8 +50,7 @@ export default function LoanOfferPage() {
                             key={i} 
                             // Enhanced styling for hover and shadow
                             className="flex flex-col justify-between shadow-xl border border-blue-100 bg-white rounded-2xl transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] cursor-pointer"
-                            onClick={() => handleSelectLoan(offer.amount)}
-                        > 
+                            onClick={() => handleSelectLoan(offer.amount)}> 
                             <CardHeader className="p-6"> 
                                 {/* Larger, more prominent loan amount */}
                                 <CardTitle className="text-4xl font-extrabold text-[#1E2A78] text-center tracking-tight"> 

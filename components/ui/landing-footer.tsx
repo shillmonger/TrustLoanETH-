@@ -58,11 +58,11 @@ const supportedWallets = [
         <div className="flex flex-col space-y-4">
           <h3 className="text-lg font-semibold text-white">Wallets</h3>
           <ul className="space-y-2">
-            <li><Link href="#" className="hover:text-[#61A9FF] transition-colors">Rainbow</Link></li>
-            <li><Link href="#" className="hover:text-[#61A9FF] transition-colors">TrustWallet</Link></li>
-            <li><Link href="#" className="hover:text-[#61A9FF] transition-colors">MetaMask</Link></li>
-            <li><Link href="#" className="hover:text-[#61A9FF] transition-colors">WalletConnect</Link></li>
-            <li><Link href="#" className="hover:text-[#61A9FF] transition-colors">Coinbase Wallet</Link></li>
+            <li><Link href="#rainbow" className="hover:text-[#61A9FF] transition-colors">Rainbow</Link></li>
+            <li><Link href="#trustwallet" className="hover:text-[#61A9FF] transition-colors">TrustWallet</Link></li>
+            <li><Link href="#metamask" className="hover:text-[#61A9FF] transition-colors">MetaMask</Link></li>
+            <li><Link href="#walletconnect" className="hover:text-[#61A9FF] transition-colors">WalletConnect</Link></li>
+            <li><Link href="#coinbase" className="hover:text-[#61A9FF] transition-colors">Coinbase Wallet</Link></li>
           </ul>
         </div>
 
