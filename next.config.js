@@ -11,7 +11,11 @@
 // module.exports = nextConfig;
 
 
-module.exports = {
+/** @type {import('next').NextConfig} */
+
+const nextConfig = {
+  turbo: false, // <- disable Turbopack, use Webpack
+
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -21,9 +25,6 @@ module.exports = {
     };
     return config;
   },
-
-  // 🔥 FORCE Next.js to use Webpack instead of Turbopack
-  experimental: {
-    webpackBuildWorker: true,
-  },
 };
+
+module.exports = nextConfig;
