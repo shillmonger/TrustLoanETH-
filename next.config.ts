@@ -1,40 +1,10 @@
-// import type { NextConfig } from "next";
-
-// const nextConfig: NextConfig = {
-//   reactStrictMode: true,
-
-//   experimental: {
-//     optimizePackageImports: ["lucide-react"],
-//   },
-
-//   images: {
-//     remotePatterns: [
-//       {
-//         protocol: "https",
-//         hostname: "**",
-//       },
-//     ],
-//   },
-// };
-
-// export default nextConfig;
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  reactStrictMode: true,
-
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   experimental: {
-    optimizePackageImports: ["lucide-react"],
-  },
-
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "**",
-      },
-    ],
+    turbo: {
+      bundler: false, // disable turbopack, use webpack
+    },
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
