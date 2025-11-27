@@ -8,7 +8,7 @@ import { mainnet, sepolia } from "wagmi/chains";
 
 const config = getDefaultConfig({
   appName: "Crypto Loan App",
-  projectId: "YOUR_WALLETCONNECT_PROJECT_ID", // create at cloud.walletconnect.com
+  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!, // create at cloud.walletconnect.com
   chains: [mainnet, sepolia],
 });
 
