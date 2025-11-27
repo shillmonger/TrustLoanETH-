@@ -1,670 +1,221 @@
+// Dashboard updated to match the UI layout shown in screenshot
+
 "use client";
 
-import { useAccount } from "wagmi";
+import { useState, useEffect } from "react";
+import { useAccount, useDisconnect } from "wagmi";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useMemo } from "react";
-import { useEthPrice } from "@/src/hooks/useEthPrice";
-import { ethers } from "ethers";
-import { Button } from "@/components/ui/button";
-import { useFeePayment } from "@/src/hooks/useFeePayment";
-import { toast } from "sonner";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
-import { useDisconnect } from "wagmi";
-// Removed Select imports as they are no longer used for asset selection
-// import {
-//   Select,
-//   SelectContent,
-//   SelectItem,
-//   SelectTrigger,
-//   SelectValue,
-// } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, AlertCircle, HandCoins } from "lucide-react";
-
-// Using sonner toast library
-
-// --- MOCK INPUT COMPONENT (You should use your actual "@/components/ui/input") ---
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  className?: string;
-}
-
-const Input = ({ className = '', ...props }: InputProps) => (
-  <input
-    {...props}
-    className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
-  />
-);
-
-// Define Activity interface (moved out of function scope)
-interface Activity {
-  id: string;
-  description: string;
-}
-
-// --- Loan Confirmation Modal Component ---
-interface LoanConfirmationModalProps {
-  loanAmount: number;
-  selectedAsset: string;
-  onClose: () => void;
-  onConfirm: () => void;
-}
-
-const LoanConfirmationModal = ({
-  loanAmount,
-  selectedAsset,
-  onClose,
-  onConfirm
-}: LoanConfirmationModalProps) => {
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleConfirm = async () => {
-    try {
-      setIsLoading(true);
-      await onConfirm();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  // Use live ETH price
-  const { ethPrice, isLoading: isPriceLoading, error: priceError } = useEthPrice();
-  
-  // Calculate collateral amounts using live price
-  const collateralPercentage = 0.10; // 10% collateral
-  const collateralAmountUSD = loanAmount * collateralPercentage;
-  const collateralAmountETH = ethPrice ? collateralAmountUSD / ethPrice : 0;
-  
-  // Format values for display
-  const formattedCollateralUSD = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(collateralAmountUSD);
-  
-  const formattedCollateralETH = collateralAmountETH.toFixed(6) + ' ETH';
-  
-  // Show loading state if price is being fetched
-  if (isPriceLoading) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div className="w-full max-w-sm rounded-xl overflow-hidden bg-white p-6 text-center">
-          <p className="text-gray-700">Loading current ETH price...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  // Show error if price fetch failed
-  if (priceError || !ethPrice) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div className="w-full max-w-sm rounded-xl overflow-hidden bg-white p-6">
-          <div className="text-red-500 mb-4">
-            <AlertTriangle className="h-6 w-6 mx-auto mb-2" />
-            <p className="text-center">Failed to load ETH price</p>
-          </div>
-          <Button 
-            className="w-full mt-4" 
-            onClick={() => window.location.reload()}
-          >
-            Retry
-          </Button>
-        </div>
-      </div>
-    );
-  }
+import LoanModal from "@/components/LoanModal";
+import { FiFolder } from "react-icons/fi";
 
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      {/* Modal Card */}
-      <div className="w-full max-w-sm rounded-xl overflow-hidden bg-white shadow-2xl transition-all scale-100 opacity-100">
-
-        {/* Header */}
-        <div className="bg-blue-600 p-6 text-white">
-          <h2 className="text-xl font-bold">Loan Request Confirmation</h2>
-          <p className="text-sm opacity-90">Review details before proceeding</p>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-6">
-
-          {/* Loan Amount */}
-          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-sm font-medium text-gray-500 mb-1">Loan Amount</p>
-            <p className="text-3xl font-extrabold text-gray-900">${loanAmount.toLocaleString()}</p>
-            <p className="text-sm text-gray-500 mt-1">Asset: **{selectedAsset}**</p>
-          </div>
-
-          {/* Collateral Details */}
-          <div>
-            <div className="flex items-center space-x-2 mb-3">
-              <HandCoins className="h-5 w-5 text-yellow-600" />
-              <p className="text-base font-semibold text-gray-800">Collateral Required</p>
-            </div>
-
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Collateral (10% of loan)</span>
-                <span className="font-medium">{formattedCollateralUSD}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Current ETH Price</span>
-                <span className="font-mono font-medium">${ethPrice.toLocaleString()}/ETH</span>
-              </div>
-
-              <div className="pt-3 border-t border-gray-200 flex justify-between font-bold text-gray-900">
-                <span>Total Collateral Required</span>
-                <span className="text-blue-600">{formattedCollateralETH}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Alert */}
-          <div className="bg-yellow-50 border-yellow-400 p-2 rounded-md" role="alert">
-            <div className="flex">
-              <div className="ml-3">
-                <p className="text-sm font-medium text-yellow-800">
-                  This transaction will be processed on-chain. Please ensure you have sufficient ETH for gas fees (if the authorization dosent work run the site on your wallet browser for faster processing).
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer Buttons */}
-        <div className="flex p-6 pt-0 space-x-3">
-          <Button
-            variant="outline"
-            className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
-            onClick={onClose}
-          >
-            Cancel
-          </Button>
-          <Button
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
-            onClick={handleConfirm}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <div className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing...
-              </div>
-            ) : 'Confirm in Wallet'}
-          </Button>
-        </div>
-
-      </div>
-    </div>
-  );
-};
-
-// --- Main Dashboard Component ---
 export default function DashboardPage() {
+  const loanAmounts = [500, 1000, 2500, 5000, 10000, 15000, 20000, 30000];
+  const [selectedLoan, setSelectedLoan] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [liquidityIncrease, setLiquidityIncrease] = useState(0);
+
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const { ethPrice, isLoading: isEthPriceLoading, error: ethPriceError } = useEthPrice();
-  const { payFee, isLoading: isPayFeeLoading, isConfirming, isConfirmed, txHash } = useFeePayment();
 
-  const MIN_LOAN = 500;
-  const MAX_LOAN = 30000;
-
-  // --- State Declarations ---
-  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState<string>("ETH");
-  const [loanAmount, setLoanAmount] = useState<number>(0);
-  const [creditLimit] = useState<number>(MAX_LOAN);
-  const [activeLoans] = useState<number>(0.00);
-  const [nextRepayment] = useState<string>("0");
-  const [collateralRatio] = useState<number>(10);
-  const [isClient, setIsClient] = useState(false); // Client-side check
-
-  // Updated to show more activities (5 instead of 3)
-  const [liveActivities, setLiveActivities] = useState<Activity[]>([
-    { id: "0xA4B1", description: "deposited 0.3 ETH collateral ($600)" },
-    { id: "0xSC92", description: "repaid 0.6 ETH loan ($1200)" },
-    { id: "0xA4B3", description: "deposited 0.4 ETH collateral ($800)" },
-    { id: "0xB2C4", description: "borrowed 0.25 ETH ($500)" },
-    { id: "0xD5E7", description: "withdrew 0.5 ETH collateral ($1000)" },
+  // LIVE EVENTS
+  const [liveEvents, setLiveEvents] = useState([
+    { shortAddr: "0x1648", action: "repaid 1.67 ETH ($3,340) loan" },
+    { shortAddr: "0x1BE4", action: "closed 14.08 ETH ($28,160) loan early" },
+    { shortAddr: "0x0E43", action: "adjusted collateral ratio to 114%" },
+    { shortAddr: "0xAAD7", action: "added 8.51 ETH ($17,020) to collateral" },
+    { shortAddr: "0x58E6", action: "borrowed 2.84 ETH ($5,680)" },
   ]);
 
-  // Calculate collateral required based on loan amount and ratio
-  const collateralRequired = useMemo<number>(
-    () => (loanAmount * collateralRatio) / 100,
-    [loanAmount, collateralRatio]
-  );
-
-  // --- Activity Generator Logic ---
-  const possibleDescriptions: string[] = [
-    "deposited {amount} ETH collateral",
-    "repaid {amount} ETH loan",
-    "borrowed {amount} ETH",
-    "withdrew {amount} ETH collateral",
-    "liquidated {amount} ETH position",
-    "adjusted collateral ratio to {ratio}%",
-    "funded new loan position with {amount} ETH",
-    "closed {amount} ETH loan early",
-    "added {amount} ETH to existing collateral",
-    "migrated {amount} ETH to new vault",
-  ];
-
-  // Updated possibleAssets to focus on ETH as per request
-  const possibleAssets: string[] = ["ETH"];
-
-  const generateRandomActivity = (): Activity => {
-    const randomId = `0x${Math.random().toString(16).substr(2, 3).toUpperCase()}${Math.floor(Math.random() * 10)}`;
-    const randomDesc = possibleDescriptions[Math.floor(Math.random() * possibleDescriptions.length)];
-    // Updated: Min amount equivalent to $500 (assuming ~$2000/ETH, so min 0.25 ETH), scaled up to 15 ETH max for variety
-    const minEth = 0.25; // ~$500
-    const maxEth = 15; // ~$30,000
-    const randomAmount = (Math.random() * (maxEth - minEth) + minEth).toFixed(2);
-    const randomAsset = possibleAssets[Math.floor(Math.random() * possibleAssets.length)];
-    const randomRatio = Math.floor(Math.random() * 20 + 100);
-
-    // Calculate USD equivalent for display (assuming $2000/ETH)
-    const usdEquivalent = (parseFloat(randomAmount) * 2000).toFixed(0);
-    const amountWithUsd = `${randomAmount} ETH ($${usdEquivalent})`;
-
-    let description = randomDesc
-      .replace("{amount}", amountWithUsd)
-      .replace("{asset}", randomAsset)
-      .replace("{ratio}", randomRatio.toString());
-
-    return { id: randomId, description };
-  };
-
-  // Amount options for buttons
-  const amountOptions: number[] = [500, 1000, 2500, 5000, 10000, 15000, 20000, 30000];
-
-  // --- Handlers ---
-
-  const handleManualInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-
-    if (value === '') {
-      setLoanAmount(0);
-      return;
-    }
-
-    const numberValue = parseInt(value, 10);
-
-    if (isNaN(numberValue)) {
-      return;
-    }
-
-    // Instant snapping/toasting for visual feedback while typing:
-    if (numberValue < MIN_LOAN && numberValue !== 0) {
-      if (value.length >= 3) {
-        // FIX: Adjusted toast call to match mock structure
-        toast.error("Loan Amount Too Low", {
-          description: `Minimum loan amount is $${MIN_LOAN.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`
-        });
-        setLoanAmount(MIN_LOAN);
-        return;
-      }
-    }
-
-    if (numberValue > creditLimit) {
-      // FIX: Adjusted toast call to match mock structure
-      toast.error("Exceeds Credit Limit", {
-        description: `Your credit limit is $${creditLimit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`
-      });
-      setLoanAmount(creditLimit);
-      return;
-    }
-
-    setLoanAmount(numberValue);
-  };
-
-  // Handlers for the modal
-  const handleOpenModal = () => {
-    // Final check before opening modal
-    if (loanAmount < MIN_LOAN || loanAmount > creditLimit) {
-      // Show error toast with proper formatting
-      toast.error("Invalid Loan Amount", {
-        description: `Please select an amount between $${MIN_LOAN.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} and $${creditLimit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`
-      });
-      return;
-    }
-    if (loanAmount > 0) {
-      setShowConfirmationModal(true);
-    }
-  };
-
-  const handleCloseModal = () => {
-    setShowConfirmationModal(false);
-  };
-
-  const handleConfirmLoan = async () => {
-    if (!isConnected || !address) {
-      toast.error("Wallet Not Connected", {
-        description: "Please connect your wallet first."
-      });
-      return;
-    }
-
-    if (!ethPrice) {
-      toast.error("Price Error", {
-        description: "Unable to fetch current ETH price. Please try again."
-      });
-      return;
-    }
-
-    try {
-      // Calculate collateral using the same formula as in the modal
-      const collateralAmountUSD = loanAmount * 0.10; // 10% of loan amount
-      const collateralInEth = (collateralAmountUSD / ethPrice).toFixed(6);
-
-      // Use the payFee hook to handle the transaction with the exact same ETH amount
-      const hash = await payFee(collateralInEth);
-      
-      if (hash) {
-        setShowConfirmationModal(false);
-      }
-    } catch (error) {
-      console.error('Error in handleConfirmLoan:', error);
-      // Error is already handled by the useFeePayment hook
-    }
-  };
-
-  // --- Effects ---
-
-  // Redirect to home if not connected
   useEffect(() => {
-    if (!isConnected) {
-      router.push("/");
-    }
-  }, [isConnected, router]);
-
-  // Set isClient to true after component mounts (Hydration fix)
-  useEffect(() => {
-    setIsClient(true);
+    setMounted(true);
+    setLiquidityIncrease(Math.floor(3000 + Math.random() * 5000));
   }, []);
 
-  // Update live activities every 5 seconds, now keeping 5 activities
+  // Live events simulation with random delays between 5-7 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLiveActivities((prev) => {
-        const newActivity = generateRandomActivity();
-        const updated = [newActivity, ...prev].slice(0, 5);
-        return updated;
-      });
-    }, 5000);
+    const generateRandomEvent = () => {
+      const actions = [
+        `added ${randomEth(1, 20)} ETH ($${randomUsd(2000, 40000)}) to collateral`,
+        `borrowed ${randomEth(0.5, 10)} ETH ($${randomUsd(1000, 20000)})`,
+        `deposited ${randomEth(0.1, 5)} ETH ($${randomUsd(200, 10000)})`,
+        `repaid ${randomEth(1, 8)} ETH ($${randomUsd(2000, 16000)}) loan`,
+        "closed loan early",
+        "adjusted collateral ratio to 125%",
+      ];
 
-    return () => clearInterval(interval);
+      const newEvent = {
+        shortAddr: "0x" + Math.random().toString(16).slice(2, 6).toUpperCase(),
+        action: actions[Math.floor(Math.random() * actions.length)],
+      };
+
+      setLiveEvents((prev) => [newEvent, ...prev.slice(0, 4)]);
+    };
+
+    // Initial call
+    const timeoutId = setTimeout(() => {
+      generateRandomEvent();
+      // Set up interval with random delay between 5-7 seconds
+      const intervalId = setInterval(generateRandomEvent, 5000 + Math.random() * 2000);
+      return () => clearInterval(intervalId);
+    }, 5000 + Math.random() * 2000);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, []);
 
-  // --- Render Protection ---
-  if (!isConnected) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Redirecting...</p>
-      </div>
-    );
+  // Helper functions for realistic values
+  function randomEth(min: number, max: number) {
+    return (Math.random() * (max - min) + min).toFixed(2);
+  }
+  
+  function randomUsd(min: number, max: number) {
+    return Math.floor(Math.random() * (max - min) + min).toLocaleString();
   }
 
-  // Format address for display
-  const formattedAddress = `${address?.substring(0, 6)}...${address?.substring(
-    address.length - 4
-  )}`;
+  const shorten = (addr: string) => addr.slice(0, 6) + "..." + addr.slice(-4);
 
-  // Show loading state during SSR/SSG to prevent hydration mismatch
-  if (!isClient) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Loading dashboard...</p>
-      </div>
-    );
-  }
-
-  // --- Main Render ---
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      {/* <Toaster /> // Render your actual Toaster here */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen w-full bg-[#f6f8fc] text-black p-5 lg:px-30">
+    {/* // <div className="min-h-screen w-full bg-[#f6f8fc] text-black p-4 sm:p-6 lg: py-8 px-30"> */}
+      {/* HEADER */}
+      <header className="w-full bg-white shadow-sm border rounded-2xl px-6 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <h1 className="text-2xl font-extrabold font-bold">Loan Dashboard</h1>
+          <span className="px-4 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-full border border-blue-200 font-medium">
+            Tier 1 - Verified Borrower
+          </span>
+        </div>
 
-        {/* Header (Wallet Section) */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-2xl font-bold text-gray-900">Loan Dashboard</h1>
-            <Badge
-              variant="secondary"
-              className="bg-blue-100 text-blue-800 border-blue-200"
-            >
-              Tier 1 - Verified Borrower
-            </Badge>
-          </div>
-          <div className="flex w-full items-center justify-between md:w-auto md:justify-start md:space-x-4">
-            <div className="px-3 py-1.5 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200/50">
-              <span className="text-xs font-medium text-gray-500 hidden sm:inline">
-                Connected as:
-              </span>{" "}
-              <span className="font-mono text-xs text-gray-900">
-                {formattedAddress}
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+        {mounted && isConnected && (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <span className="text-sm text-gray-600">
+              Connected as: {shorten(address!)}
+            </span>
+            <button
               onClick={() => {
                 disconnect();
                 router.push("/");
               }}
+              className="px-5 py-2.5 rounded-xl bg-gray-100 border hover:bg-gray-200 text-sm font-medium transition cursor-pointer"
             >
               Disconnect Wallet
-            </Button>
+            </button>
           </div>
-        </div>
+        )}
+      </header>
 
-        {/* Loan Overview */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Loan Overview
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="bg-white/80 backdrop-blur-sm border border-gray-200 shadow-sm"><CardContent className="py-6 text-center"><p className="text-sm text-gray-500 mb-1">Active Loans</p><p className="text-2xl font-bold text-gray-900">{activeLoans}</p></CardContent></Card>
-            <Card className="bg-white/80 backdrop-blur-sm border border-gray-200 shadow-sm"><CardContent className="py-6 text-center"><p className="text-sm text-gray-500 mb-1">Collateral Ratio</p><p className="text-2xl font-bold text-gray-900">{collateralRatio}%</p></CardContent></Card>
-            <Card className="bg-white/80 backdrop-blur-sm border border-gray-200 shadow-sm"><CardContent className="py-6 text-center"><p className="text-sm text-gray-500 mb-1">Next Repayment</p><p className="text-2xl font-bold text-gray-900">{nextRepayment}</p></CardContent></Card>
-            <Card className="bg-white/80 backdrop-blur-sm border border-gray-200 shadow-sm"><CardContent className="py-6 text-center"><p className="text-sm text-gray-500 mb-1">Credit Limit</p><p className="text-2xl font-bold text-blue-600">${creditLimit.toLocaleString()}</p></CardContent></Card>
+      {/* OVERVIEW CARDS */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+        {[
+          { title: "Active Loans", value: "0" },
+          { title: "Collateral Ratio", value: "0%" },
+          { title: "Next Repayment", value: "0" },
+          { title: "Credit Limit", value: "$30K", highlight: true },
+        ].map((item, i) => (
+          <div
+            key={i}
+            className="bg-white rounded-2xl shadow-sm border p-6 text-center"
+          >
+            <p className="text-gray-500 text-sm font-medium">{item.title}</p>
+            <h2
+              className={`text-3xl mt-3 font-bold ${
+                item.highlight ? "text-blue-600" : ""
+              }`}
+            >
+              {item.value}
+            </h2>
           </div>
-        </div>
+        ))}
+      </section>
 
-        {/* Borrow + Live/Active Loans */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Borrow Assets */}
-          <Card className="bg-white/80 backdrop-blur-sm shadow-sm border-gray-200/50">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-semibold text-gray-900">
-                Borrow Assets
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Choose Asset - REPLACED DROPDOWN with FLEXED BUTTONS */}
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-2">
-                  Choose Asset
-                </p>
-                <div className="flex space-x-3">
-                  {/* ETH Button */}
-                  <Button
-                    onClick={() => setSelectedAsset("ETH")}
-                    className={`
-                      w-28
-                      font-bold
-                      transition-colors
-                      ${selectedAsset === "ETH"
-                        ? "bg-blue-600 hover:bg-blue-700 text-white"
-                        : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-300"
-                      }
-                    `}
-                    variant={selectedAsset === "ETH" ? "default" : "outline"}
-                  >
-                    ETH
-                  </Button>
-                  {/* USDT Button */}
-                  <Button
-                    onClick={() => setSelectedAsset("USDT")}
-                    className={`
-                      w-28
-                      font-bold
-                      transition-colors
-                      ${selectedAsset === "USDT"
-                        ? "bg-blue-600 hover:bg-blue-700 text-white"
-                        : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-300"
-                      }
-                    `}
-                    variant={selectedAsset === "USDT" ? "default" : "outline"}
-                  >
-                    USDT
-                  </Button>
-                </div>
-              </div>
 
-              {/* Input Amount Field */}
-              <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-500">
-                    Input Amount (USD)
-                  </p>
-                  <div className="relative">
-                      <Input
-                        type="number"
-                        placeholder="Enter Amount"
-                        min={MIN_LOAN}
-                        max={creditLimit}
-                        step={1}
-                        value={loanAmount === 0 ? '' : loanAmount}
-                        onChange={handleManualInputChange}
-                        className="w-full text-lg font-bold pr-12 h-12"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">USD</span>
-                  </div>
-                  <p className={`text-xs ${loanAmount > 0 && (loanAmount < MIN_LOAN || loanAmount > creditLimit) ? 'text-red-500' : 'text-gray-500'}`}>
-                      Min: ${MIN_LOAN.toLocaleString()} | Max: ${creditLimit.toLocaleString()}
-                  </p>
-              </div>
-
-              {/* Select Amount via Slider */}
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-2">
-                  Select Amount (Slider)
-                </p>
-                {/* Note: Slider track color is controlled by the component's default theme/styling,
-                    which is typically blue (bg-primary/bg-blue-600 in shacdn/ui context). */}
-                <Slider
-                  value={[loanAmount]}
-                  onValueChange={(value) => setLoanAmount(value[0])}
-                  max={creditLimit}
-                  min={MIN_LOAN}
-                  step={1}
-                  className="w-full [&>span:first-child]:bg-blue-600" // Added tailwind class for blue track fill
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-2">
-                  <span>${MIN_LOAN}</span>
-                  <span>${loanAmount.toLocaleString()}</span>
-                  <span>${creditLimit.toLocaleString()}</span>
-                </div>
-
-                {/* Amount Buttons - UPDATED TO BE BLUE WHEN ACTIVE */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
-                  {amountOptions
-                    .filter(amount => amount <= creditLimit)
-                    .map((amount) => (
-                      <Button
-                        key={amount}
-                        size="sm"
-                        onClick={() => setLoanAmount(amount)}
-                        // Conditional blue styling for active button
-                        className={`w-full transition-colors ${
-                            loanAmount === amount
-                            ? "bg-blue-600 hover:bg-blue-700 text-white"
-                            : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-300"
-                        }`}
-                        variant={loanAmount === amount ? "default" : "outline"}
-                      >
-                        ${amount.toLocaleString()}
-                      </Button>
-                    ))}
-                </div>
-              </div>
-
-              {/* Collateral Alert */}
-              <Alert className="border-yellow-200 bg-yellow-50">
-                <AlertDescription className="text-sm text-yellow-800">
-                  <span className="font-medium">Collateral Required:</span> You must hold at least {collateralRatio}%
-                  of the loan amount **${collateralRequired.toFixed(0)}**. These
-                  funds will be locked until repayment.
-                </AlertDescription>
-              </Alert>
-
-              {/* Authorize Button - NOW OPENS MODAL */}
-              <Button
-                disabled={loanAmount < MIN_LOAN || loanAmount > creditLimit}
-                className={`w-full shadow-md p-5 text-white transition-all cursor-pointer ${
-                  loanAmount >= MIN_LOAN && loanAmount <= creditLimit
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-gray-300 cursor-not-allowed"
-                }`}
-                onClick={handleOpenModal}
-                aria-label={loanAmount >= MIN_LOAN && loanAmount <= creditLimit
-                  ? `Authorize loan of $${loanAmount} in ${selectedAsset}`
-                  : 'Please enter a valid loan amount to continue'}
+      {/* MAIN GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+        {/* BORROW ASSETS */}
+        <div className="bg-white rounded-2xl shadow-sm border p-6">
+          <h3 className="text-xl font-extrabold mb-6">Borrow Assets</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {loanAmounts.map((amount) => (
+              <button
+                key={amount}
+                onClick={() => setSelectedLoan(amount)}
+                className="border-2 border-blue-600 text-blue-600 rounded-xl py-4 font-bold text-lg hover:bg-blue-600 hover:text-white transition-all duration-200 cursor-pointer"
               >
-                Authorize in Wallet
-              </Button>
-            </CardContent>
-          </Card>
+                ${amount.toLocaleString()}
+              </button>
+            ))}
+          </div>
 
-          {/* Live Activity + Active Loans */}
-          <div className="space-y-6">
-            {/* Live Activity Card */}
-            <Card className="bg-white/80 backdrop-blur-sm shadow-sm border-gray-200/50">
-              <div className="absolute top-4 right-4"><div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div></div>
-              <CardHeader className="pb-4 pt-8"><CardTitle className="text-lg font-semibold text-gray-900">Live Activity</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                {liveActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-center justify-between text-sm py-1">
-                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">{activity.id}</Badge>
-                    <span className="text-gray-600">{activity.description}</span>
-                  </div>
-                ))}
-                <div className="pt-4 border-t border-gray-200">
-                  <Badge variant="outline" className="text-xs border-gray-300">Vault liquidity increased by ${Math.floor(Math.random() * 5000 + 1000).toLocaleString()}</Badge>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Collateral Notice */}
+<div className="mt-6 p-4 rounded-xl bg-yellow-50 border border-yellow-200">
+  <p className="font-semibold text-yellow-700">Collateral Required:</p>
+  <p className="text-yellow-800 mt-1 text-sm">
+    You must hold at least 10% of the loan amount. 
+    These funds will be locked until repayment.
+  </p>
+</div>
 
-            {/* Active Loans Card */}
-            <Card className="bg-white/80 backdrop-blur-sm shadow-sm border-gray-200/50">
-              <CardHeader className="pb-4"><CardTitle className="text-lg font-semibold text-gray-900">Active Loans</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-center py-8 text-gray-500"><p className="text-lg font-medium">No active loans</p><p className="text-sm">Borrow assets to see your vault</p></div>
-                <Button variant="outline" className="w-full border-gray-300 text-gray-700 hover:bg-gray-50" disabled>View All On-Chain</Button>
-              </CardContent>
-            </Card>
+          
+        </div>
+
+
+
+        {/* LIVE ACTIVITY — Now 100% matches your screenshot */}
+        <div className="bg-white rounded-2xl shadow-sm border p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-extrabold">Live Activity</h3>
+            <div className="relative">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <div className="absolute inset-0 w-3 h-3 bg-green-500 rounded-full animate-ping"></div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {liveEvents.map((event, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 text-gray-700 text-sm leading-relaxed animate-fadeIn"
+              >
+                <span className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg font-mono text-xs font-semibold tracking-wider">
+                  {event.shortAddr}
+                </span>
+                <span>{event.action}</span>
+              {/* </span> */}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 pt-5 border-t">
+            <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium text-gray-700">
+              <span className="text-green-600">↑</span>
+              Vault liquidity increased by ${liquidityIncrease}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* RENDER MODAL CONDITIONALLY (using the new component) */}
-      {showConfirmationModal && (
-        <LoanConfirmationModal
-          loanAmount={loanAmount}
-          selectedAsset={selectedAsset}
-          onClose={handleCloseModal}
-          onConfirm={handleConfirmLoan}
+     {/* ACTIVE LOANS */}
+<section className="bg-white rounded-2xl shadow-sm border p-8">
+  <h3 className="text-xl font-extrabold mb-6">Active Loans</h3>
+
+  <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
+    <FiFolder className="text-gray-300" size={48} />
+    <p className="text-gray-400 text-lg">No active loans</p>
+  </div>
+
+  <button className="w-full py-4 border border-gray-300 rounded-xl text-sm font-medium hover:bg-gray-50 transition">
+    View All On-Chain
+  </button>
+</section>
+
+      {/* Loan Modal */}
+      {selectedLoan && (
+        <LoanModal
+          loanAmount={selectedLoan}
+          onClose={() => setSelectedLoan(null)}
         />
       )}
     </div>

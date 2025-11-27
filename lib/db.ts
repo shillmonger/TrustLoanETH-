@@ -1,46 +1,24 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.DATABASE_URL;
+const MONGODB_URI = process.env.MONGODB_URI as string;
 
 if (!MONGODB_URI) {
-  throw new Error(
-    'Please define the DATABASE_URL environment variable inside .env.local'
-  );
+  throw new Error("❌ MONGODB_URI is missing in .env.local");
 }
 
-// Initialize cached variable with the correct type
-let cached = global.mongoose;
+let cached = (global as any).mongoose || { conn: null, promise: null };
 
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
-}
-
-/**
- * Connect to MongoDB using a cached connection to prevent multiple connections in development.
- */
-async function dbConnect() {
-  if (cached.conn) {
-    return cached.conn;
-  }
+export async function connectDB() {
+  if (cached.conn) return cached.conn;
 
   if (!cached.promise) {
-    const opts = {
-      bufferCommands: false,
-    };
-
-    // Store the promise of the connection
-    cached.promise = mongoose.connect(MONGODB_URI!, opts);
+    cached.promise = mongoose
+      .connect(MONGODB_URI, {
+        dbName: "loanApp",
+      })
+      .then((mongoose) => mongoose);
   }
 
-  try {
-    // Wait for the connection promise to resolve
-    cached.conn = await cached.promise;
-    return cached.conn;
-  } catch (e) {
-    // Reset the promise if connection fails
-    cached.promise = null;
-    throw e;
-  }
+  cached.conn = await cached.promise;
+  return cached.conn;
 }
-
-export default dbConnect;
